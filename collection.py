@@ -19,8 +19,8 @@ class Collection:
             else:
                 page = requests.get(URI + "/?page={}".format(page_number)).json()
                 # for each dictionary in the list 'results', append dictionary to list contents
-                for document in range(0, len(page['results'])):
-                    self.contents.append(page['results'][document])
+                for document in page['results']:
+                    self.contents.append(document)
         return self.contents
 
     # change value of a field, to reference ObjectId of another document in another collection
