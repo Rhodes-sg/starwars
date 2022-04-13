@@ -1,6 +1,5 @@
 import pymongo
 import requests
-import bson
 
 
 class Collection:
@@ -11,32 +10,37 @@ class Collection:
         self.contents = contents
 
     def api_scrape(self, URI):
-        i = 0
-
-        while True:
-            i += 1
-            page = requests.get(URI + "/?page={}".format(i))
+        page_number = 0
+        while True:  # infinite loop, breaks when api call hits an error
+            page_number += 1  # increase page number with each call, starts at 1
+            page = requests.get(URI + "/?page={}".format(page_number))  # adds page number to URI
             if page.status_code == 404:
                 break
             else:
-                page = requests.get(URI + "/?page={}".format(i)).json()
+                page = requests.get(URI + "/?page={}".format(page_number)).json()
+                # for each dictionary in the list 'results', append dictionary to list contents
                 for document in range(0, len(page['results'])):
                     self.contents.append(page['results'][document])
         return self.contents
 
+    # change value of a field, to reference ObjectId of another document in another collection
     def reference(self, parent_collection, field: str):
         for document in self.contents:
-            if not document[field]:
+            if not document[field]:  # if value is empty
                 continue
             else:
                 for index, URI in enumerate(document[field]):
-                    field_info = requests.get(URI).json()
-                    field_name = field_info['name']
+                    field_info = requests.get(URI).json()  # retrieve document for value to reference
+                    field_name = field_info['name']  # value of field 'name'
+
+                    # search collection for corresponding document and retrieve ObjectId
                     object_id = parent_collection.collection.find_one({'name': field_name})['_id']
-                    document[field][index] = bson.ObjectId(object_id)
+                    document[field][index] = object_id  # change value to ObjectId of referenced document
 
     def insert_collection(self):
+        # if collection exists in database, delete existing collection
         if self.collection_name in self.db.list_collection_names():
             self.collection.drop()
+        # loop through list, inserting each document into new collection
         for document in self.contents:
             self.collection.insert_one(document)
